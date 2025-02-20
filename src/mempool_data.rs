@@ -64,7 +64,7 @@ pub struct MempoolTransaction {
 
 impl MempoolTransaction {
 
-    fn fetch_mempool_txns() -> Result<Vec<MempoolTransaction>, Box<dyn Error>> {
+    pub fn fetch_mempool_txns() -> Result<Vec<MempoolTransaction>, Box<dyn Error>> {
         let mut mempool_txns: Vec<MempoolTransaction> = vec![];
 
         let raw_mempool: Vec<u8> = bcli(&format!("getrawmempool true")).expect("Error getting raw mempool");
@@ -90,10 +90,4 @@ impl MempoolTransaction {
         Ok(mempool_txns)
     }
 
-}
-
-pub fn run() -> Result<Vec<MempoolTransaction>, Box<dyn Error>> {
-    let mempool_txns: Vec<MempoolTransaction> = MempoolTransaction::fetch_mempool_txns()?;
-
-    Ok(mempool_txns)
 }
