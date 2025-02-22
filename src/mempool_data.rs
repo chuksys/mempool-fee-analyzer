@@ -3,14 +3,18 @@ use std::{error::Error, os::unix::process::parent_id, path::PathBuf, process::Co
 use hex::FromHex;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use std::fs;
+use std::path::Path;
+use std::io;
 use std::collections::HashMap;
+
 
 #[derive(Debug)]
 pub enum AnalyzerError {
     SomethingWentWrong
 }
 
-fn bcli(cmd: &str) -> Result<Vec<u8>, AnalyzerError> {
+pub fn bcli(cmd: &str) -> Result<Vec<u8>, AnalyzerError> {
     let mut args = vec![];
     args.extend(cmd.split(' '));
 
@@ -35,7 +39,7 @@ struct Fees {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct TransactionData {
+pub struct MempoolData {
     ancestorcount: u32,
     ancestorsize: u32,
     #[serde(rename = "bip125-replaceable")]
@@ -49,45 +53,60 @@ struct TransactionData {
     time: u64,
     unbroadcast: bool,
     vsize: u32,
-    weight: u32,
+    weight: u64,
     wtxid: String,
 }
 
-#[derive(Debug, Deserialize)]
+impl MempoolData {
+    pub fn save_to_file(mempool_data: &HashMap<String, MempoolData>, file_path: &str) -> io::Result<()> {
+        let serialized = serde_json::to_string(&mempool_data).unwrap();
+        fs::write(file_path, serialized)
+    }
+
+    pub fn load_from_file(file_path: &str) -> io::Result<HashMap<String, MempoolData>> {
+        let data = fs::read_to_string(file_path)?;
+        let mempool_data = serde_json::from_str(&data).unwrap();
+        Ok(mempool_data)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MempoolTransaction {
-    txid: String,
-    fee: u64,
-    weight: u32,
-    fee_rate: f64,
-    parent_txids: Vec<String>
+    pub txid: String,
+    pub fee: u64,
+    pub weight: u64,
+    pub fee_rate: f64,
+    pub parent_txids: Vec<String>,
+    inputs_count: u32,
+    outputs_count: u32
 }
 
 impl MempoolTransaction {
 
-    pub fn fetch_mempool_txns() -> Result<Vec<MempoolTransaction>, Box<dyn Error>> {
+    pub fn fetch_mempool_txns(mempool_data: &HashMap<String, MempoolData>) -> Result<Vec<MempoolTransaction>, Box<dyn Error>> {
         let mut mempool_txns: Vec<MempoolTransaction> = vec![];
 
-        let raw_mempool: Vec<u8> = bcli(&format!("getrawmempool true")).expect("Error getting raw mempool");
-        
-        let mempool_data_str = String::from_utf8(raw_mempool).expect("Failed to convert bytes to string");
-        let mempool_data: HashMap<String, TransactionData> = serde_json::from_str(&mempool_data_str).expect("Could not deserialize mempool data");
-
         for (txid, data) in mempool_data {
-            let fee: u64 = 0;
+            let fee: u64 = (data.fees.base * 100_000_000.0) as u64;
             let weight = data.weight;
-            let fee_rate: f64= fee as f64 / weight as f64;
-            let parent_txids = vec![];
+            let fee_rate: f64 = fee as f64 / weight as f64;
+            let parent_txids = &data.depends;
+            let inputs_count = 0;
+            let outputs_count = 0;
 
             mempool_txns.push(MempoolTransaction {
-                txid,
+                txid: txid.to_string(),
                 fee,
                 weight,
                 fee_rate,
-                parent_txids
+                parent_txids: parent_txids.to_vec(),
+                inputs_count,
+                outputs_count
             })
         }
 
         Ok(mempool_txns)
     }
+
 
 }

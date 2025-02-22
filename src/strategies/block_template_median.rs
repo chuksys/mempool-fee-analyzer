@@ -1,29 +1,36 @@
 #![allow(unused)]
 use std::error::Error;
-use crate::mempool_data;
+use crate::{block_data, mempool_data};
 use crate::strategies::FeeEstimator;
 
 #[derive(Debug)]
 pub struct BlockTemplateMedianEstimator;
 
 impl FeeEstimator for BlockTemplateMedianEstimator {
-    
+
     fn estimate_fee(&self, mempool_data: Vec<mempool_data::MempoolTransaction>) -> f64 {
         
-        println!("mempool_data {:?}", mempool_data.len());
+        let x: Vec<&mempool_data::MempoolTransaction> = mempool_data.iter().filter(|m| m.parent_txids.len() > 23).collect();
 
         //build block template
-        //extract 2 subsets from block template - txns above median and txns below median - so we can see how the estimation model performs for low-fee txns as well as high-fee txns.
-        //save txids from these 2 subsets for evaluation later
-        //find the median of each split
-        //repeat process every minute and log medians in a csv
+        let block_template = block_data::BlockBuilder::build_block(mempool_data).expect("Could not get block template");
 
-        //monitor target block confirmation
-        //Upon confirmation, fetch all txns included in the target block which were part of subsets extracted earlier and group them accordingly
-        //find the median for each of these groups
-        //compare them with the medians from block template subsets logged in the csv. 
+        let half_block_template_length = block_template.len() as f64 / 2.0;
+        let half_block_template_length_is_whole_number = (half_block_template_length.fract() == 0.0) || half_block_template_length.is_nan();
 
-        1.0000000
+        let mut median_fee_rate: f64 = 0.0;
+
+        if half_block_template_length_is_whole_number {
+            let median_index_1 = half_block_template_length.trunc() as usize;
+            let median_index_2 = half_block_template_length.trunc() as usize + 1;
+
+            median_fee_rate = (block_template[median_index_1].fee_rate + block_template[median_index_2].fee_rate) / 2.0;
+        } else {
+            let median_index = half_block_template_length.trunc() as usize + 1;
+            median_fee_rate = block_template[median_index].fee_rate;
+        }
+
+        median_fee_rate
     }
 
     fn name(&self) -> &'static str {
