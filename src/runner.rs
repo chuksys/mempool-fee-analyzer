@@ -20,7 +20,7 @@ impl<'a> Runner<'a> {
         
         let fee_estimate = self.strategy.estimate_fee(mempool_data);
 
-        //based on user config input, select mempool subset relative to fee estimate (for low, high fee txns)
+        //based on user config input, select mempool subset relative to fee estimate (for low, high fee txns) or mempool txns that meet input/output requirements. 
         //save txids from subset for evaluation later
         //find fee estimate of subset and log in csv
         //repeat process every minute
