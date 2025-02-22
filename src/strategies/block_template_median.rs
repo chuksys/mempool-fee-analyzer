@@ -10,8 +10,6 @@ impl FeeEstimator for BlockTemplateMedianEstimator {
 
     fn estimate_fee(&self, mempool_data: Vec<mempool_data::MempoolTransaction>) -> f64 {
         
-        let x: Vec<&mempool_data::MempoolTransaction> = mempool_data.iter().filter(|m| m.parent_txids.len() > 23).collect();
-
         //build block template
         let block_template = block_data::BlockBuilder::build_block(mempool_data).expect("Could not get block template");
 
