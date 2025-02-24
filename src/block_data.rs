@@ -10,25 +10,33 @@ use std::ops::Index;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::algo::toposort;
 use crate::mempool_data::{self, MempoolTransaction};
+use crate::runner::bcli;
 
-#[derive(Debug)]
-pub enum AnalyzerError {
-    SomethingWentWrong
+#[derive(Debug, Clone)]
+pub struct BlockMonitor {
+    prev_block_height: u32,
+    prev_block_hash: String,
+    target_block_height: u32,
+    target_block_hash: String
 }
 
-fn bcli(cmd: &str) -> Result<Vec<u8>, AnalyzerError> {
-    let mut args = vec![];
-    args.extend(cmd.split(' '));
+impl BlockMonitor {
+    pub fn get_prev_block_height() -> Result<u64, Box<dyn Error>> {
+        let raw_block_height: Vec<u8> = bcli(&format!("getblockcount")).expect("Error getting previous block height");
+        let block_height_str = String::from_utf8(raw_block_height).expect("Failed to convert bytes to string");
+        let block_height: u64 = block_height_str.trim().parse().unwrap_or_else(|err| {
+            println!("Error parsing block height: {}", err);
+            0
+        });
+        
+        Ok(block_height)
+    }
 
-    let result = Command::new("bitcoin-cli")
-        .args(&args)
-        .output()
-        .map_err(|_| AnalyzerError::SomethingWentWrong)?;
-
-    if result.status.success() {
-        return Ok(result.stdout);
-    } else {
-        return Ok(result.stderr);
+    pub fn get_block_hash(block_height: u64) -> Result<String, Box<dyn Error>> {
+        let raw_block_hash: Vec<u8> = bcli(&format!("getblockhash {}", block_height)).expect("Error getting block hash");
+        let block_hash_str = String::from_utf8(raw_block_hash).expect("Failed to convert bytes to string");
+        
+        Ok(block_hash_str.trim().to_string())
     }
 }
 
@@ -86,7 +94,7 @@ pub struct BlockBuilder {
 
 impl BlockBuilder {
 
-    pub fn build_block(mempool_txns: Vec<MempoolTransaction>) -> Result<Vec<MempoolTransaction>, Box<dyn Error>> {
+    pub fn build_block(mempool_txns: &Vec<MempoolTransaction>) -> Result<Vec<MempoolTransaction>, Box<dyn Error>> {
         
         let mut block_metrics = BlockMetrics {
             total_txns_included_in_block: 0,

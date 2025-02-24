@@ -8,28 +8,6 @@ use std::path::Path;
 use std::io;
 use std::collections::HashMap;
 
-
-#[derive(Debug)]
-pub enum AnalyzerError {
-    SomethingWentWrong
-}
-
-pub fn bcli(cmd: &str) -> Result<Vec<u8>, AnalyzerError> {
-    let mut args = vec![];
-    args.extend(cmd.split(' '));
-
-    let result = Command::new("bitcoin-cli")
-        .args(&args)
-        .output()
-        .map_err(|_| AnalyzerError::SomethingWentWrong)?;
-
-    if result.status.success() {
-        return Ok(result.stdout);
-    } else {
-        return Ok(result.stderr);
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 struct Fees {
     ancestor: f64,
@@ -77,8 +55,8 @@ pub struct MempoolTransaction {
     pub weight: u64,
     pub fee_rate: f64,
     pub parent_txids: Vec<String>,
-    inputs_count: u32,
-    outputs_count: u32
+    pub inputs_count: u32,
+    pub outputs_count: u32
 }
 
 impl MempoolTransaction {

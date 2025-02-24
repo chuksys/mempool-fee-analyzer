@@ -1,14 +1,14 @@
 #![allow(unused)]
 use std::error::Error;
 use crate::{block_data, mempool_data};
-use crate::strategies::FeeEstimator;
+use crate::strategies::FeeRateEstimator;
 
 #[derive(Debug)]
 pub struct BlockTemplateMedianEstimator;
 
-impl FeeEstimator for BlockTemplateMedianEstimator {
+impl FeeRateEstimator for BlockTemplateMedianEstimator {
 
-    fn estimate_fee(&self, mempool_data: Vec<mempool_data::MempoolTransaction>) -> f64 {
+    fn estimate_fee_rate(&self, mempool_data: &Vec<mempool_data::MempoolTransaction>) -> f64 {
         
         //build block template
         let block_template = block_data::BlockBuilder::build_block(mempool_data).expect("Could not get block template");
