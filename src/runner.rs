@@ -93,12 +93,12 @@ impl<'a> Runner<'a> {
         };
 
         if analyzer_result.result_exists() {
-            result = analyzer_result.load_result_from_memory()?;
+            result = analyzer_result.load_intermediate_result()?;
         }
 
         result.push(analyzer_result.clone());
 
-        analyzer_result.save_result_in_memory(result);
+        analyzer_result.save_intermediate_result(result);
 
         if *current_target_block_height < target_block_height {
             println!("current target block mined!");
@@ -113,7 +113,7 @@ impl<'a> Runner<'a> {
                 mempool_subset_txns_in_target_block_count: filtered_txns_in_block.len() 
             };
 
-            analyzer_result.update_result_in_memory(prev_block_height, result_update);
+            analyzer_result.update_intermediate_result(prev_block_height, result_update);
         }
 
         *current_target_block_height = target_block_height;

@@ -26,14 +26,14 @@ pub struct AnalyzerResultUpdate {
 }
 
 pub trait AnalyzerResultProcessor {
-    fn save_result_in_memory(&self, result: Vec<AnalyzerResult>) -> Result<(), Box<dyn Error>>;
-    fn update_result_in_memory(&self, prev_block_height: u32, result_update: AnalyzerResultUpdate) -> Result<(), Box<dyn Error>>;
-    fn load_result_from_memory(&self) -> Result<Vec<AnalyzerResult>, Box<dyn Error>>;
+    fn save_intermediate_result(&self, result: Vec<AnalyzerResult>) -> Result<(), Box<dyn Error>>;
+    fn update_intermediate_result(&self, prev_block_height: u32, result_update: AnalyzerResultUpdate) -> Result<(), Box<dyn Error>>;
+    fn load_intermediate_result(&self) -> Result<Vec<AnalyzerResult>, Box<dyn Error>>;
     fn result_exists(&self) -> bool;
 }
 
 impl AnalyzerResultProcessor for AnalyzerResult {
-    fn save_result_in_memory(&self, result: Vec<AnalyzerResult>) -> Result<(), Box<dyn Error>> {
+    fn save_intermediate_result(&self, result: Vec<AnalyzerResult>) -> Result<(), Box<dyn Error>> {
         let file = File::create("result.json")?;
         let writer = BufWriter::new(file);
         serde_json::to_writer_pretty(writer, &result)?;
@@ -41,8 +41,8 @@ impl AnalyzerResultProcessor for AnalyzerResult {
         Ok(())
     }
 
-    fn update_result_in_memory(&self, prev_block_height: u32, result_update: AnalyzerResultUpdate) -> Result<(), Box<dyn Error>> {
-        let mut result = self.load_result_from_memory()?;
+    fn update_intermediate_result(&self, prev_block_height: u32, result_update: AnalyzerResultUpdate) -> Result<(), Box<dyn Error>> {
+        let mut result = self.load_intermediate_result()?;
 
         for i in 0..result.len() {
             if result[i].target_block_height == prev_block_height {
@@ -53,12 +53,12 @@ impl AnalyzerResultProcessor for AnalyzerResult {
             }
         };
 
-        self.save_result_in_memory(result)?;
+        self.save_intermediate_result(result)?;
 
         Ok(())
     }
 
-    fn load_result_from_memory(&self) -> Result<Vec<AnalyzerResult>, Box<dyn Error>> {
+    fn load_intermediate_result(&self) -> Result<Vec<AnalyzerResult>, Box<dyn Error>> {
         let mut result = vec![];
         let file = File::open("result.json")?;
         let reader = std::io::BufReader::new(file);
