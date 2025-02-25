@@ -56,7 +56,7 @@ cargo run -- --strategy-name <strategy_name> --duration <num_of_blocks> subset-s
 
 * `--high-fee-txns`: Select high-fee transactions - to see how the strategy performs given high-fee txns.
 * `--low-fee-txns`: Select low-fee transactions - to see how the strategy performs given low-fee txns.
-* `--inputs '<comparison> <count>'`: Select transactions with a specific number of inputs.`<comparison>` can be equals, less_than or greater_than. `<count>` is the number of inputs to compare against.
+* `--inputs '<comparison> <count>'`: Select transactions with a specific number of inputs.`<comparison>` can be equals, less-than or greater-than. `<count>` is the number of inputs to compare against.
 * `--outputs '<comparison> <count>'`: Select transactions with a specific number of outputs (same comparison options as `--inputs`).
 
 **Example Usage**
@@ -73,7 +73,7 @@ This command will:
 * Select transactions with `2` inputs.
 
 ```bash
-cargo run -- --strategy-name block_template_median --duration 50 subset-sample --low-fee-txns --outputs 'greater_than 2'
+cargo run -- --strategy-name block_template_median --duration 50 subset-sample --low-fee-txns --outputs 'greater-than 2'
 ```
 
 This command will:
