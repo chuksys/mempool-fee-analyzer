@@ -34,7 +34,7 @@ Before using `mempool-fee-analyzer`, you need to have a running Bitcoin Core nod
 1. **Clone the Repository:**
 
 ```bash
-git clone [https://github.com/](https://github.com/)chuksys/mempool-fee-analyzer.git
+git clone https://github.com/chuksys/mempool-fee-analyzer.git
 cd mempool-fee-analyzer
 ```
 
@@ -45,7 +45,7 @@ The mempool-fee-analyzer tool is run using the cargo run command.  The general s
 ```bash
 cargo run -- --strategy-name <strategy_name> --duration <num_of_blocks> subset-sample [options]
 ```
-`--strategy-name <strategy_name>`: Specifies the fee estimation strategy to use. We currently have onee strategy included - 
+`--strategy-name <strategy_name>`: Specifies the fee estimation strategy to use. We currently have one strategy included - 
 **block_template_median**
 
 `--duration <num_of_blocks>`: Specifies the number of blocks to analyze.
