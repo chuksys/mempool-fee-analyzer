@@ -25,16 +25,62 @@ We are starting with a command-line interface (CLI) and plan to add a graphical 
 * **Customizable Parameters:**  Allow users to configure parameters for each strategy and tailor the analysis to their specific needs.
 * **Real-time Mempool Monitoring:**  Integration with live mempool data sources for up-to-the-minute analysis.
 
+## Prerequisites
+
+Before using `mempool-fee-analyzer`, you need to have a running Bitcoin Core node. Make sure your Bitcoin Core node is properly configured and synchronized with the network.  You'll also need Rust and Cargo installed.  You can install Rust from [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install).
+
 ## Getting Started
 
-[Link to Getting Started Guide/Documentation] (a link to a `GETTING_STARTED.md` file)
+1. **Clone the Repository:**
 
-This section will provide clear instructions on how to:
+   ```bash
+   git clone [https://github.com/](https://github.com/)chuksys/mempool-fee-analyzer.git
+   cd mempool-fee-analyzer
 
-* Clone the repository
-* Install dependencies
-* Run the CLI tool
-* Interpret the output
+2. **Run the Analyzer:**
+
+The mempool-fee-analyzer tool is run using the cargo run command.  The general syntax is: 
+
+```bash
+cargo run -- --strategy-name <strategy_name> --duration <num_of_blocks> subset-sample [options]
+
+--strategy-name <strategy_name>: Specifies the fee estimation strategy to use. We currently have onee strategy included - 
+**block_template_median**
+
+--duration <num_of_blocks>: Specifies the number of blocks to analyze.
+
+subset-sample:  Indicates the subset sampling method.
+
+[options]:  Additional options to filter mempool transactions for analysis.  You can choose one or more of the following:
+
+--high-fee-txns: Select high-fee transactions.
+--low-fee-txns: Select low-fee transactions.
+--inputs '<comparison> <count>': Select transactions with a specific number of inputs.
+<comparison> can be equals, less_than or greater_than.
+<count> is the number of inputs to compare against.
+--outputs '<comparison> <count>': Select transactions with a specific number of outputs (same comparison options as --inputs).
+
+**Example Usage**
+
+```bash
+cargo run -- --strategy-name block_template_median --duration 100 subset-sample --high-fee-txns --inputs 'equals 2'
+
+This command will:
+
+Use the block_template_median fee estimation strategy.
+Analyze the next 100 blocks.
+Select high-fee transactions subset.
+Select transactions with 2 inputs.
+
+```bash
+cargo run -- --strategy-name <strategy_name> --duration 50 subset-sample --low-fee-txns --outputs 'greater_than 2'
+
+This command will:
+
+Use the <strategy_name> fee estimation strategy.
+Analyze the next 50 blocks.
+Select low-fee transactions.
+Select transactions with more than 2 outputs.
 
 ## Contributing
 
