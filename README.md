@@ -54,12 +54,12 @@ cargo run -- --strategy-name <strategy_name> --duration <num_of_blocks> subset-s
 
 `[options]`:  Additional options to filter mempool transactions for analysis.  You can choose one or more of the following:
 
-`--high-fee-txns`: Select high-fee transactions.
-`--low-fee-txns`: Select low-fee transactions.
-`--inputs '<comparison> <count>'`: Select transactions with a specific number of inputs.
-`<comparison>` can be equals, less_than or greater_than.
-`<count>` is the number of inputs to compare against.
-`--outputs '<comparison> <count>'`: Select transactions with a specific number of outputs (same comparison options as `--inputs`).
+* `--high-fee-txns`: Select high-fee transactions.
+* `--low-fee-txns`: Select low-fee transactions.
+* `--inputs '<comparison> <count>'`: Select transactions with a specific number of inputs.
+* `<comparison>` can be equals, less_than or greater_than.
+* `<count>` is the number of inputs to compare against.
+* `--outputs '<comparison> <count>'`: Select transactions with a specific number of outputs (same comparison options as `--inputs`).
 
 **Example Usage**
 
