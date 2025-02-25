@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![allow(non_snake_case)]
 use std::{error::Error, os::unix::process::parent_id, path::PathBuf, process::Command};
 use hex::FromHex;
 use serde::{Deserialize, Serialize};
@@ -12,6 +13,31 @@ use petgraph::algo::toposort;
 use crate::mempool_data::{self, MempoolTransaction};
 use crate::runner::bcli;
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+struct Vin {
+    txinwitness: Option<Vec<String>>,
+    vout: Option<u32>,
+    txid: Option<String>
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+struct Vout {
+    n: u32,
+    value: f64
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct BlockTransaction {
+    pub txid: String,
+    vin: Vec<Vin>,
+    vout: Vec<Vout>
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+struct Block {
+    tx: Vec<BlockTransaction>
+}
+
 #[derive(Debug, Clone)]
 pub struct BlockMonitor {
     prev_block_height: u32,
@@ -21,10 +47,10 @@ pub struct BlockMonitor {
 }
 
 impl BlockMonitor {
-    pub fn get_prev_block_height() -> Result<u64, Box<dyn Error>> {
+    pub fn get_prev_block_height() -> Result<u32, Box<dyn Error>> {
         let raw_block_height: Vec<u8> = bcli(&format!("getblockcount")).expect("Error getting previous block height");
         let block_height_str = String::from_utf8(raw_block_height).expect("Failed to convert bytes to string");
-        let block_height: u64 = block_height_str.trim().parse().unwrap_or_else(|err| {
+        let block_height: u32 = block_height_str.trim().parse().unwrap_or_else(|err| {
             println!("Error parsing block height: {}", err);
             0
         });
@@ -32,11 +58,43 @@ impl BlockMonitor {
         Ok(block_height)
     }
 
-    pub fn get_block_hash(block_height: u64) -> Result<String, Box<dyn Error>> {
+    pub fn get_block_hash(block_height: u32) -> Result<String, Box<dyn Error>> {
         let raw_block_hash: Vec<u8> = bcli(&format!("getblockhash {}", block_height)).expect("Error getting block hash");
         let block_hash_str = String::from_utf8(raw_block_hash).expect("Failed to convert bytes to string");
         
         Ok(block_hash_str.trim().to_string())
+    }
+
+    pub fn get_target_block_txns(target_block_height: u32) -> Result<Vec<BlockTransaction>, Box<dyn Error>> {
+        let mut block_transactions: Vec<BlockTransaction> = Vec::new();
+
+        let raw_block_hash: Vec<u8> = bcli(&format!("getblockhash {}", target_block_height)).expect("Error getting block hash");
+        let block_hash_str = String::from_utf8(raw_block_hash).expect("Failed to convert bytes to string");
+
+        let raw_block: Vec<u8> = bcli(&format!("getblock {} 2", block_hash_str.trim())).expect("Could not get block");
+        let block_str = String::from_utf8(raw_block).expect("Failed to convert bytes to string");
+
+        let block_data: Block = serde_json::from_str(&block_str).expect("Could not deserialize block data");
+
+        for txn in block_data.tx {
+            block_transactions.push(txn);
+        }
+        
+        Ok(block_transactions)
+    }
+
+    pub fn get_initial_target_block() -> Result<u32, Box<dyn Error>> {
+        let raw_block_count: Vec<u8> = bcli(&format!("getblockcount")).expect("Error getting block count");
+        let block_count_str = String::from_utf8(raw_block_count).expect("Failed to convert bytes to string");
+
+        let block_count: u32 = block_count_str.trim().parse().unwrap_or_else(| err | {
+            println!("Error parsing block count: {}", err);
+            0
+        });
+
+        let initial_target_block: u32 = block_count + 1;
+
+        Ok(initial_target_block)
     }
 }
 

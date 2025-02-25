@@ -6,6 +6,9 @@ pub struct Config {
     #[arg(short, long, help = "Name of the fee estimation strategy to use", value_name = "STRATEGY_NAME")]
     pub strategy_name: String,
 
+    #[arg(short, long, help = "How many blocks in the future do you want to run this strategy for?", value_name = "DURATION")]
+    pub duration: u32,
+    
     #[clap(subcommand)]
     pub commands: Commands,
 }

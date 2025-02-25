@@ -1,14 +1,15 @@
 #![allow(unused)]
 use tokio::time::{self, Duration};
 use std::{error::Error, os::unix::process::parent_id, path::PathBuf, process::Command};
-use crate::block_data;
+use crate::block_data::{BlockTransaction, BlockMonitor};
 use crate::config::Config;
 use crate::mempool_data::{self, MempoolTransaction, MempoolData};
 use crate::mempool_data_subsets::{filter_mempool_txns, HighFeeFilter, InputsCountFilter, LowFeeFilter, MempoolTransactionFilter, OutputsCountFilter};
 use crate::strategies::{FeeRateEstimator, select_strategy};
-use std::path::Path;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use crate::config::Commands;
+use crate::result::{AnalyzerResult, AnalyzerResultProcessor, AnalyzerResultUpdate};
 
 #[derive(Debug)]
 pub enum AnalyzerError {
@@ -25,11 +26,18 @@ impl<'a> Runner<'a> {
         Runner { strategy }
     }
 
-    pub fn run_analysis(&self, config: Config, mempool_txns: Vec<MempoolTransaction>) -> Result<(), Box<dyn Error>> {
+    pub fn run_analysis(
+        &self,
+        current_target_block_height: &mut u32,
+        config: Config, 
+        mempool_txns: Vec<MempoolTransaction>
+    ) -> Result<(), Box<dyn Error>> {
         
+        let mut result = vec![];
         let fee_rate_estimate = self.strategy.estimate_fee_rate(&mempool_txns);
 
         let mut filtered_txns = vec![];
+        let mut subset_fee_rate_estimate= 0.0;
 
         match &config.commands {
             Commands::SubsetSample {
@@ -58,64 +66,93 @@ impl<'a> Runner<'a> {
                 }
     
                 filtered_txns = filter_mempool_txns(&mempool_txns, &filters);
-    
-                //println!("Filtered Transactions: {:?}", filtered_txns.len());
+                subset_fee_rate_estimate = self.strategy.estimate_fee_rate(&filtered_txns);
             }
         }
 
-        let prev_block_height = block_data::BlockMonitor::get_prev_block_height()?;
-        let prev_block_hash = block_data::BlockMonitor::get_block_hash(prev_block_height)?;
-
-        println!("----------------------------");
-        println!("prev_block_height {:?}", prev_block_height);
-        println!("prev_block_hash {:?}", prev_block_hash);
-        println!("target_block_height {:?}", prev_block_height + 1);
-        println!("----------------------------");
-
-        //save txids from subset for evaluation later
-        //find fee_rate estimate of subset and log in csv (log other important metrics too e.g prev_block_height, target_block_height)
+        let prev_block_height = BlockMonitor::get_prev_block_height()?;
+        let prev_block_hash = BlockMonitor::get_block_hash(prev_block_height)?;
+        let target_block_height = prev_block_height + 1;
+        let mut target_block_hash = "".to_string();
         
-        //log the CBlockPolicyEstimator fee_rate estimate for each mempool-based estimate logged
-        //repeat process every minute
+        let mut target_block_txns: Vec<BlockTransaction> = vec![];
+        let mut filtered_txns_in_block: Vec<MempoolTransaction> = vec![];
 
-        //monitor target block confirmation
-        //Upon confirmation, fetch all txns included in the target block which were part of subset
-        //find the median of these txns included in target block which were part of subset
-        //log this median in the csv in columns that correspond with earlier logged medians from subset (log target_block_hash too) 
+        let analyzer_result: AnalyzerResult = AnalyzerResult {
+            prev_block_height,
+            prev_block_hash,
+            target_block_height,
+            target_block_hash,
+            mempool_fee_rate_estimate: fee_rate_estimate,
+            mempool_subset_fee_rate_estimate: subset_fee_rate_estimate,
+            mempool_subset_txns_count: filtered_txns.len(),
+            target_block_txns_count: target_block_txns.len(),
+            mempool_subset_txns_in_target_block_count: filtered_txns_in_block.len(),
+            conditional_probability: filtered_txns_in_block.len() as f64 / filtered_txns.len() as f64,
+            mempool_depth: mempool_txns.len()
+        };
+
+        if analyzer_result.result_exists() {
+            result = analyzer_result.load_result_from_memory()?;
+        }
+
+        result.push(analyzer_result.clone());
+
+        analyzer_result.save_result_in_memory(result);
+
+        if *current_target_block_height < target_block_height {
+            println!("current target block mined!");
+
+            let target_block_hash = BlockMonitor::get_block_hash(prev_block_height)?;
+            let target_block_txns = BlockMonitor::get_target_block_txns(prev_block_height)?;
+            let filtered_txns_in_block = find_common_transactions(&filtered_txns, &target_block_txns);
+
+            let result_update = AnalyzerResultUpdate {
+                target_block_hash,
+                target_block_txns_count: target_block_txns.len(),
+                mempool_subset_txns_in_target_block_count: filtered_txns_in_block.len() 
+            };
+
+            analyzer_result.update_result_in_memory(prev_block_height, result_update);
+        }
+
+        *current_target_block_height = target_block_height;
+
+        let now_system = std::time::SystemTime::now();
+        let since_the_epoch = now_system
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("Time went backwards");
 
         Ok(())
     }
 }
 
-pub async fn run_strategy(config: Config) -> Result<(), Box<dyn Error>> {
+fn find_common_transactions(
+    filtered_txns: &[MempoolTransaction],
+    txns_in_block: &[BlockTransaction],
+) -> Vec<MempoolTransaction> {
+    let txids_in_block: HashSet<&String> = txns_in_block.iter().map(|tx| &tx.txid).collect();
+
+    filtered_txns
+        .iter()
+        .filter(|tx| txids_in_block.contains(&tx.txid))
+        .cloned()
+        .collect()
+}
+
+pub async fn run_strategy(current_target_block_height: &mut u32, config: Config) -> Result<(), Box<dyn Error>> {
     
     let strategy = select_strategy(&config.strategy_name);
     let runner = Runner::new(&*strategy);
 
     let mut mempool_txns: Vec<MempoolTransaction> = vec![];
 
-    //temporary mempool for development
-    let file_path = "mempool.json";
-
-    if Path::new(file_path).exists() {
-        match MempoolData::load_from_file(file_path) {
-            Ok(mempool_data) => {
-                mempool_txns = MempoolTransaction::fetch_mempool_txns(&mempool_data)?;
-            }
-            Err(err) => {
-                println!("Failed to load mempool from cache: {}", err);
-            }
-        }
-    } else {
-        let raw_mempool_data: Vec<u8> = bcli(&format!("getrawmempool true")).expect("Error getting raw mempool");
-        let mempool_data_str = String::from_utf8(raw_mempool_data).expect("Failed to convert bytes to string");
-        let mempool_data: HashMap<String, MempoolData> = serde_json::from_str(&mempool_data_str).expect("Could not deserialize mempool data");
+    let raw_mempool_data: Vec<u8> = bcli(&format!("getrawmempool true")).expect("Error getting raw mempool");
+    let mempool_data_str = String::from_utf8(raw_mempool_data).expect("Failed to convert bytes to string");
+    let mempool_data: HashMap<String, MempoolData> = serde_json::from_str(&mempool_data_str).expect("Could not deserialize mempool data");
         
-        let _ = MempoolData::save_to_file(&mempool_data, &file_path)?;
-        mempool_txns = MempoolTransaction::fetch_mempool_txns(&mempool_data)?;
-    }
-
-    let _ = runner.run_analysis(config, mempool_txns);
+    mempool_txns = MempoolTransaction::fetch_mempool_txns(&mempool_data)?;
+    let _ = runner.run_analysis(current_target_block_height, config, mempool_txns);
 
     Ok(())
 }
@@ -140,10 +177,11 @@ pub async fn run_tasks(config: Config) {
     let interval = Duration::from_secs(60);
     let mut ticker = time::interval(interval);
 
+    let mut current_target_block_height = BlockMonitor::get_initial_target_block().expect("Cound not get intial target block");
+        
     loop {
         ticker.tick().await;
 
-        let config_clone = config.clone();
-        run_strategy(config_clone).await;
+        run_strategy(&mut current_target_block_height, config.clone()).await;
     }
 }
