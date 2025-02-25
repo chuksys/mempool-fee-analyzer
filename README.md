@@ -46,7 +46,7 @@ The mempool-fee-analyzer tool is run using the cargo run command.  The general s
 cargo run -- --strategy-name <strategy_name> --duration <num_of_blocks> subset-sample [options]
 ```
 `--strategy-name <strategy_name>`: Specifies the fee estimation strategy to use. We currently have one strategy included - 
-**block_template_median**
+**block_template_median**.
 
 `--duration <num_of_blocks>`: Specifies the number of blocks to analyze.
 
@@ -54,11 +54,9 @@ cargo run -- --strategy-name <strategy_name> --duration <num_of_blocks> subset-s
 
 `[options]`:  Additional options to filter mempool transactions for analysis.  You can choose one or more of the following:
 
-* `--high-fee-txns`: Select high-fee transactions.
-* `--low-fee-txns`: Select low-fee transactions.
-* `--inputs '<comparison> <count>'`: Select transactions with a specific number of inputs.
-* `<comparison>` can be equals, less_than or greater_than.
-* `<count>` is the number of inputs to compare against.
+* `--high-fee-txns`: Select high-fee transactions - to see how the strategy performs given high-fee txns.
+* `--low-fee-txns`: Select low-fee transactions - to see how the strategy performs given low-fee txns.
+* `--inputs '<comparison> <count>'`: Select transactions with a specific number of inputs.`<comparison>` can be equals, less_than or greater_than. `<count>` is the number of inputs to compare against.
 * `--outputs '<comparison> <count>'`: Select transactions with a specific number of outputs (same comparison options as `--inputs`).
 
 **Example Usage**
@@ -69,10 +67,10 @@ cargo run -- --strategy-name block_template_median --duration 100 subset-sample 
 
 This command will:
 
-Use the `block_template_median` fee estimation strategy.
-Analyze the next `100` blocks.
-Select `high-fee` transactions subset.
-Select transactions with `2` inputs.
+* Use the `block_template_median` fee estimation strategy.
+* Analyze the next `100` blocks.
+* Select `high-fee` transactions mempool subset.
+* Select transactions with `2` inputs.
 
 ```bash
 cargo run -- --strategy-name block_template_median --duration 50 subset-sample --low-fee-txns --outputs 'greater_than 2'
@@ -80,10 +78,11 @@ cargo run -- --strategy-name block_template_median --duration 50 subset-sample -
 
 This command will:
 
-Use the `block_template_median` fee estimation strategy.
-Analyze the next `50` blocks.
-Select `low-fee` transactions.
-Select transactions with more than `2` outputs.
+* Use the `block_template_median` fee estimation strategy.
+* Analyze the next `50` blocks.
+* Select `low-fee` transactions mempool subset.
+* Select transactions with more than `2` outputs.
+
 
 ## Contributing
 
