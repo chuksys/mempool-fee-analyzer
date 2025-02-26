@@ -38,6 +38,8 @@ impl AnalyzerResultProcessor for AnalyzerResult {
         let writer = BufWriter::new(file);
         serde_json::to_writer_pretty(writer, &result)?;
 
+        println!("Intermediate result saved in result.json");
+
         Ok(())
     }
 
