@@ -1,10 +1,11 @@
+#![allow(unused)]
 use serde::{Serialize, Deserialize};
 use std::fs::File;
 use std::io::BufWriter;
 use std::error::Error;
 use std::path::Path;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct AnalyzerResult {
     pub prev_block_height: u32,
     pub prev_block_hash: String,

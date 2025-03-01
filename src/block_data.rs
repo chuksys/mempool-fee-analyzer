@@ -83,7 +83,7 @@ impl BlockMonitor {
         Ok(block_transactions)
     }
 
-    pub fn get_initial_target_block() -> Result<u32, Box<dyn Error>> {
+    pub fn get_latest_target_block() -> Result<u32, Box<dyn Error>> {
         let raw_block_count: Vec<u8> = bcli(&format!("getblockcount")).expect("Error getting block count");
         let block_count_str = String::from_utf8(raw_block_count).expect("Failed to convert bytes to string");
 
@@ -92,9 +92,9 @@ impl BlockMonitor {
             0
         });
 
-        let initial_target_block: u32 = block_count + 1;
+        let latest_target_block: u32 = block_count + 1;
 
-        Ok(initial_target_block)
+        Ok(latest_target_block)
     }
 }
 
