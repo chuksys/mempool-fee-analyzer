@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use crate::config::Commands;
 use crate::result::{AnalyzerResult, AnalyzerResultProcessor, AnalyzerResultUpdate};
+use chrono::{DateTime, Utc, TimeZone};
 
 #[derive(Debug)]
 pub enum AnalyzerError {
@@ -37,6 +38,12 @@ impl<'a> Runner<'a> {
     }
 }
 
+fn get_timestamp() -> String {
+    let now: DateTime<Utc> = Utc::now();
+    let formatted_time = now.format("%Y-%m-%d %H:%M:%S%z").to_string();
+    formatted_time
+}
+
 fn find_common_transactions(
     filtered_txns: &[MempoolTransaction],
     txns_in_block: &[BlockTransaction],
@@ -49,7 +56,6 @@ fn find_common_transactions(
         .cloned()
         .collect()
 }
-
 pub struct MempoolFilterParams<'a> {
     config: Config,
     runner: Runner<'a>,
@@ -104,8 +110,6 @@ pub async fn run_analysis(
 ) -> Result<AnalyzerResult, Box<dyn Error + Send + Sync>> {
 
     let last_snapshot = last_snapshot.lock().await;
-
-    println!("last_snapshot_target {:?}", last_snapshot.target_block_height);
     
     let mut result = vec![];
 
@@ -156,16 +160,21 @@ pub async fn run_analysis(
             mempool_subset_txns_in_target_block_count: filtered_txns_in_block.len(),
             conditional_probability: filtered_txns_in_block.len() as f64 / filtered_txns.len() as f64,
             mempool_depth: last_snapshot.mempool_txns.len(),
-            blocks_found_count
+            blocks_found_count,
+            block_discovery_timestamp: get_timestamp(),
+            snapshot_timestamp: last_snapshot.analyzer_result.snapshot_timestamp.clone()
         };
 
         if analyzer_result.result_exists() {
             result = analyzer_result.load_intermediate_result().expect("Error loading intermediate result");
         }
-    
-        result.push(analyzer_result.clone());
-        analyzer_result.save_intermediate_result(result);
 
+        let item_already_exists = result.iter().any(|r| r.prev_block_height == last_snapshot.analyzer_result.prev_block_height);
+    
+        if !item_already_exists {
+            result.push(analyzer_result.clone());
+            analyzer_result.save_intermediate_result(result);
+        }
     }
 
     let fee_rate_estimate = runner.clone().strategy.estimate_fee_rate(&mempool_txns);
@@ -197,7 +206,9 @@ pub async fn run_analysis(
         mempool_subset_txns_in_target_block_count: filtered_txns_in_block.len(),
         conditional_probability: filtered_txns_in_block.len() as f64 / filtered_txns.len() as f64,
         mempool_depth: last_snapshot.mempool_txns.len(),
-        blocks_found_count
+        blocks_found_count,
+        block_discovery_timestamp: "".to_string(),
+        snapshot_timestamp: get_timestamp()
     };
 
     Ok(analyzer_result)
@@ -267,9 +278,12 @@ pub async fn run_tasks(config: Config) -> Result<(), Box<dyn Error>> {
         let config_clone = config.clone();
         let last_snapshot_clone: Arc<Mutex<SnapshotData>> = last_snapshot.clone();
 
-        let (mempool_txns, mempool_txids) = fetch_current_mempool_txns().await.expect("Could not fetch current mempool txns");
+        let (mempool_txns, mempool_txids) = fetch_current_mempool_txns()
+        .await
+        .expect("Could not fetch current mempool txns");
 
         tokio::spawn(async move {
+
             match run_analysis(config_clone, last_snapshot_clone.clone(), mempool_txns).await {
                 Ok(analyzer_result) => {
 
@@ -297,6 +311,12 @@ pub async fn run_tasks(config: Config) -> Result<(), Box<dyn Error>> {
         let last_snapshot_main_thread_clone_mut = last_snapshot_main_thread_clone.lock().await;
 
         let config_main_thread_clone = config.clone();
+
+        println!(
+            "last_snapshot target & timestamp: {:?} & {}",
+            last_snapshot_main_thread_clone_mut.target_block_height, 
+            last_snapshot_main_thread_clone_mut.analyzer_result.snapshot_timestamp
+        );
         
         if last_snapshot_main_thread_clone_mut.analyzer_result.blocks_found_count >= config_main_thread_clone.duration {
             println!("Analysis duration reached. Exiting...");

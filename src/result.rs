@@ -18,7 +18,9 @@ pub struct AnalyzerResult {
     pub mempool_subset_txns_in_target_block_count: usize,
     pub conditional_probability: f64,
     pub mempool_depth: usize,
-    pub blocks_found_count: usize
+    pub blocks_found_count: usize,
+    pub block_discovery_timestamp: String,
+    pub snapshot_timestamp: String
 }
 
 pub struct AnalyzerResultUpdate {
