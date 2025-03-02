@@ -7,8 +7,8 @@ pub struct Config {
     pub strategy_name: String,
 
     #[arg(short, long, help = "How many blocks in the future do you want to run this strategy for?", value_name = "DURATION")]
-    pub duration: u32,
-    
+    pub duration: usize,
+
     #[clap(subcommand)]
     pub commands: Commands,
 }
