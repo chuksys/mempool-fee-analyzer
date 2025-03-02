@@ -319,7 +319,10 @@ pub async fn run_tasks(config: Config) -> Result<(), Box<dyn Error>> {
         );
         
         if last_snapshot_main_thread_clone_mut.analyzer_result.blocks_found_count >= config_main_thread_clone.duration {
-            println!("Analysis duration reached. Exiting...");
+            println!("Analysis Duration Reached. Saving Final Result in CSV Format And Exiting...");
+            let analyzer_result = AnalyzerResult::default();
+            let intermediate_result = analyzer_result.load_intermediate_result()?;
+            analyzer_result.save_final_result(intermediate_result);
             break;
         }
     }   
